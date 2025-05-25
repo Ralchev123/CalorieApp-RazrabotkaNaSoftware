@@ -1,0 +1,24 @@
+{
+  "2025-05-25": [
+    {
+      "id": 1748176095973,
+      "name": "Apple",
+      "grams": 100,
+      "calories": 53,
+      "protein_g": 0.3,
+      "fat_total_g": 0.2,
+      "carbohydrates_total_g": 14.1,
+      "timestamp": "2025-05-25T12:28:15.973Z"
+    },
+    {
+      "id": 1748176141793,
+      "name": "Chicken Breast",
+      "grams": 100,
+      "calories": 166.2,
+      "protein_g": 31,
+      "fat_total_g": 3.5,
+      "carbohydrates_total_g": 0,
+      "timestamp": "2025-05-25T12:29:01.793Z"
+    }
+  ]
+}

@@ -7,51 +7,6 @@ export default function HomePage() {
 
   return (
     <div className="home-page">
-      {/* Navigation */}
-      <nav className="navbar">
-        <div className="navbar-container">
-          <div className="navbar-content">
-            <div className="navbar-logo">
-              <div className="logo">
-                <Utensils className="logo-icon" />
-                <span className="logo-text">NutriTrack</span>
-              </div>
-            </div>
-            <div className="navbar-links">
-              <a href="#features" className="nav-link">Features</a>
-              <a href="#how-it-works" className="nav-link">How It Works</a>
-              <a href="#pricing" className="nav-link">Pricing</a>
-              <a href="#testimonials" className="nav-link">Testimonials</a>
-              <button className="btn-login">Log In</button>
-              <button className="btn-signup">Sign Up</button>
-            </div>
-            <div className="mobile-menu-button">
-              <button 
-                onClick={() => setIsNavOpen(!isNavOpen)}
-                className="mobile-menu-icon"
-              >
-                <ChevronDown className={`menu-icon ${isNavOpen ? 'rotate' : ''}`} />
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        {/* Mobile menu */}
-        {isNavOpen && (
-          <div className="mobile-menu">
-            <div className="mobile-menu-links">
-              <a href="#features" className="mobile-nav-link">Features</a>
-              <a href="#how-it-works" className="mobile-nav-link">How It Works</a>
-              <a href="#pricing" className="mobile-nav-link">Pricing</a>
-              <a href="#testimonials" className="mobile-nav-link">Testimonials</a>
-              <div className="mobile-buttons">
-                <button className="btn-login-mobile">Log In</button>
-                <button className="btn-signup-mobile">Sign Up</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </nav>
 
       {/* Hero Section */}
       <section className="hero-section">
@@ -59,18 +14,18 @@ export default function HomePage() {
           <div className="hero-content">
             <div className="hero-text">
               <h1 className="hero-title">
-                Track Your Calories, <span className="highlight">Transform Your Life</span>
+                Get Your Life <span className="highlight">In Your Hands</span>
               </h1>
               <p className="hero-description">
-                The easiest way to track your nutrition, stay fit, and achieve your health goals. Used by over 1 million people worldwide.
+                Best and easiest way to track your nutrition, get a customised diet plan and lose weigth.
               </p>
               <div className="hero-buttons">
                 <button className="btn-primary">
-                  Get Started Free
+                  Sign Up
                   <ArrowRight className="btn-icon" />
                 </button>
                 <button className="btn-secondary">
-                  View Demo
+                  Log In
                 </button>
               </div>
               <div className="user-count">
@@ -82,15 +37,12 @@ export default function HomePage() {
                   ))}
                 </div>
                 <span className="user-count-text">
-                  Joined by 10,000+ users this month
+                  Become One of the Many Happy Users
                 </span>
               </div>
             </div>
             <div className="hero-image">
               <div className="app-preview">
-                <div className="app-badge">
-                  Beta
-                </div>
                 <div className="app-header">
                   <div className="app-title">Daily Summary</div>
                   <div className="app-summary">
@@ -167,43 +119,29 @@ export default function HomePage() {
       <section id="features" className="features-section">
         <div className="features-container">
           <div className="section-header">
-            <h2 className="section-title">Features Designed for Your Success</h2>
+            <h2 className="section-title">Features Designed Only For The Best</h2>
             <p className="section-description">
-              Everything you need to track your nutrition and reach your health goals.
+              Understand what you eat and learn what you should.
             </p>
           </div>
           <div className="features-grid">
             {[
               {
-                icon: <Utensils className="feature-icon" />,
-                title: "Extensive Food Database",
-                description: "Over 1 million foods with accurate nutritional information to track your diet precisely."
-              },
-              {
                 icon: <Activity className="feature-icon" />,
                 title: "Personalized Goals",
-                description: "Set custom calorie and macro goals based on your unique health objectives."
+                description: "Set custom calorie goals based on your needs."
               },
               {
                 icon: <TrendingUp className="feature-icon" />,
                 title: "Detailed Analytics",
-                description: "Track trends over time with beautiful charts and actionable insights."
+                description: "Understand all the macros that you consume and how much you should."
               },
               {
                 icon: <Check className="feature-icon" />,
-                title: "Meal Planning",
-                description: "Plan your meals ahead of time and stay on track with your nutrition goals."
+                title: "Diet Plan",
+                description: "Get a personalised diet plan tailored only to you."
               },
-              {
-                icon: <User className="feature-icon" />,
-                title: "Community Support",
-                description: "Connect with others on the same journey and share tips and motivation."
-              },
-              {
-                icon: <ArrowRight className="feature-icon" />,
-                title: "Recipe Calculator",
-                description: "Calculate nutrition for your homemade meals and save them for future use."
-              }
+
             ].map((feature, index) => (
               <div key={index} className="feature-card">
                 <div className="feature-icon-wrapper">{feature.icon}</div>
@@ -221,7 +159,7 @@ export default function HomePage() {
           <div className="section-header">
             <h2 className="section-title">How It Works</h2>
             <p className="section-description">
-              Start your health journey in three simple steps.
+              Follow These Simple Steps
             </p>
           </div>
           <div className="process-steps">
@@ -229,17 +167,17 @@ export default function HomePage() {
               {
                 step: "01",
                 title: "Create Your Profile",
-                description: "Sign up and tell us about your goals, activity level, and dietary preferences."
+                description: "Sign Up and Log your charachteristics."
               },
               {
                 step: "02",
                 title: "Track Your Food",
-                description: "Log your meals and snacks with our easy-to-use food tracking system."
+                description: "Log your meals and snacks"
               },
               {
                 step: "03",
-                title: "Reach Your Goals",
-                description: "Stay consistent, monitor your progress, and achieve lasting results."
+                title: "Get A Custom Diet Plan",
+                description: "Our app will give you a plan of exactly what you need"
               }
             ].map((step, index) => (
               <div key={index} className="step-item">
@@ -260,7 +198,7 @@ export default function HomePage() {
         <div className="cta-container">
           <h2 className="cta-title">Ready to Transform Your Health?</h2>
           <p className="cta-description">
-            Join thousands of users who are achieving their health goals with NutriTrack.
+            Join thousands of users who are achieving their health goals with MyCal.
           </p>
           <div className="cta-buttons">
             <button className="cta-primary">
@@ -280,65 +218,21 @@ export default function HomePage() {
             <div className="footer-column">
               <div className="footer-logo">
                 <Utensils className="footer-logo-icon" />
-                <span className="footer-logo-text">NutriTrack</span>
+                <span className="footer-logo-text">MyCal</span>
               </div>
               <p className="footer-tagline">
                 Making nutrition tracking simple and effective for everyone.
               </p>
             </div>
             
-            <div className="footer-column">
-              <h3 className="footer-heading">Product</h3>
-              <ul className="footer-links">
-                <li><a href="#" className="footer-link">Features</a></li>
-                <li><a href="#" className="footer-link">Pricing</a></li>
-                <li><a href="#" className="footer-link">FAQ</a></li>
-                <li><a href="#" className="footer-link">Download App</a></li>
-              </ul>
-            </div>
             
-            <div className="footer-column">
-              <h3 className="footer-heading">Company</h3>
-              <ul className="footer-links">
-                <li><a href="#" className="footer-link">About Us</a></li>
-                <li><a href="#" className="footer-link">Blog</a></li>
-                <li><a href="#" className="footer-link">Careers</a></li>
-                <li><a href="#" className="footer-link">Contact</a></li>
-              </ul>
-            </div>
-            
-            <div className="footer-column">
-              <h3 className="footer-heading">Stay Updated</h3>
-              <p className="footer-newsletter-text">
-                Subscribe to our newsletter for tips and updates.
-              </p>
-              <div className="newsletter-form">
-                <input 
-                  type="email" 
-                  placeholder="Your email" 
-                  className="newsletter-input"
-                />
-                <button className="newsletter-button">
-                  Subscribe
-                </button>
-              </div>
-            </div>
           </div>
           
           <div className="footer-bottom">
             <p className="copyright">
-              &copy; {new Date().getFullYear()} NutriTrack. All rights reserved.
+              &copy; {new Date().getFullYear()} MyCal. All rights reserved.
             </p>
             <div className="legal-links">
-              <a href="#" className="legal-link">
-                Terms
-              </a>
-              <a href="#" className="legal-link">
-                Privacy
-              </a>
-              <a href="#" className="legal-link">
-                Cookies
-              </a>
             </div>
           </div>
         </div>
