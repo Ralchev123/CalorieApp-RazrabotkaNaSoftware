@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, ChevronDown, Check, Utensils, Activity, TrendingUp, User } from 'lucide-react';
+import { Link } from "react-router-dom";
+
 import "../css/HomePage.css"
 
 export default function HomePage() {
@@ -20,13 +22,13 @@ export default function HomePage() {
                 Best and easiest way to track your nutrition, get a customised diet plan and lose weigth.
               </p>
               <div className="hero-buttons">
-                <button className="btn-primary">
+                <Link to = "/signup" className="btn-primary">
                   Sign Up
                   <ArrowRight className="btn-icon" />
-                </button>
-                <button className="btn-secondary">
+                </Link>
+                <Link to = "/login"className="btn-secondary">
                   Log In
-                </button>
+                </Link>
               </div>
               <div className="user-count">
                 <div className="user-avatars">

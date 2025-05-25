@@ -55,3 +55,13 @@
   .signup-text{
     color: #218838;
   }
+
+  .error-message {
+    background-color: #fee;
+    border: 1px solid #fcc;
+    color: #c33;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    font-size: 14px;
+  }

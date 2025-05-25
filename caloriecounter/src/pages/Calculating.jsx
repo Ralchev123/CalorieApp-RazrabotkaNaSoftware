@@ -1,10 +1,15 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import "../css/Calculating.css"
 
 // API base URL - adjust based on your backend deployment
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 export default function FoodTracker() {
+  // Authentication
+  const { currentUser, loading: authLoading } = useAuth();
+
+  // State declarations (all hooks at top level)
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [foodItem, setFoodItem] = useState("");
@@ -22,9 +27,11 @@ export default function FoodTracker() {
 
   // Load meals for the selected date on component mount and date change
   useEffect(() => {
-    loadMealsForDate(selectedDate);
-    loadHistoricalDates();
-  }, [selectedDate]);
+    if (currentUser) {
+      loadMealsForDate(selectedDate);
+      loadHistoricalDates();
+    }
+  }, [selectedDate, currentUser]);
 
   function getTodayDate() {
     const today = new Date();
@@ -34,7 +41,12 @@ export default function FoodTracker() {
   async function loadMealsForDate(date) {
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_BASE_URL}/meals/${date}`);
+      const token = await currentUser.getIdToken();
+      const response = await fetch(`${API_BASE_URL}/meals/${date}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch meals');
@@ -56,7 +68,12 @@ export default function FoodTracker() {
 
   async function loadHistoricalDates() {
     try {
-      const response = await fetch(`${API_BASE_URL}/dates`);
+      const token = await currentUser.getIdToken();
+      const response = await fetch(`${API_BASE_URL}/dates`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch historical dates');
@@ -88,16 +105,19 @@ export default function FoodTracker() {
     
     try {
       setIsLoading(true);
+      const token = await currentUser.getIdToken();
       
       const response = await fetch(`${API_BASE_URL}/meals`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           date: selectedDate,
           foodItem: foodItem,
-          grams: parseInt(grams)
+          grams: parseInt(grams),
+          userId: currentUser.uid
         })
       });
       
@@ -129,8 +149,12 @@ export default function FoodTracker() {
 
   async function handleDeleteFood(id) {
     try {
+      const token = await currentUser.getIdToken();
       const response = await fetch(`${API_BASE_URL}/meals/${selectedDate}/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       
       if (!response.ok) {
@@ -168,10 +192,60 @@ export default function FoodTracker() {
     }, 3000);
   }
 
+  // Authentication checks (after all hooks)
+  if (authLoading) {
+    return (
+      <div className="auth-loading">
+        <div className="auth-loading-card">
+          <div className="spinner auth-spinner"></div>
+          <p className="auth-loading-text">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="auth-required">
+        <div className="auth-card">
+          <div className="auth-card-content">
+            <h2 className="auth-title">Access Required</h2>
+            <p className="auth-subtitle">Please login to access your food tracker</p>
+          </div>
+          
+          <div className="auth-features">
+            <div className="auth-features-box">
+            </div>
+            
+            <button 
+              onClick={() => window.location.href = '/login'}
+              className="auth-login-btn"
+            >
+              Login to Continue
+            </button>
+            
+            <p className="auth-register-text">
+              Don't have an account? 
+              <a href="/signup" className="auth-register-link">
+                  Sign up here
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main component render
   return (
     <div className="min-h-screen bg-gray-50 food-tracker-container">
-      <header className="bg-green-600 text-white p-4 shadow-md">
-        <h1 className="text-2xl font-bold text-center text-shadow">Daily Food Tracker</h1>
+      <header className="bg-green-600 text-white p-4 shadow-md app-header">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-shadow">Daily Food Tracker</h1>
+          <div className="user-info">
+            Welcome, {currentUser.email}
+          </div>
+        </div>
       </header>
       
       <main className="max-w-4xl mx-auto p-4">

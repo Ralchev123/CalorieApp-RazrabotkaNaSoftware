@@ -1,0 +1,490 @@
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+
+class Database {
+  constructor() {
+    this.DB_PATH = path.join(__dirname, 'nutrition.db');
+    this.db = new sqlite3.Database(this.DB_PATH);
+    this.initialized = false;
+  }
+
+  // Initialize database tables
+  async initialize() {
+    if (this.initialized) return;
+
+    return new Promise((resolve, reject) => {
+      // Create users table
+      const createUsersTableQuery = `
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          firebase_uid TEXT UNIQUE NOT NULL,
+          email TEXT,
+          display_name TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
+
+      // Update meals table to include user_id
+      const createMealsTableQuery = `
+        CREATE TABLE IF NOT EXISTS meals (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          date TEXT NOT NULL,
+          name TEXT NOT NULL,
+          grams INTEGER NOT NULL,
+          calories REAL DEFAULT 0,
+          protein_g REAL DEFAULT 0,
+          fat_total_g REAL DEFAULT 0,
+          carbohydrates_total_g REAL DEFAULT 0,
+          timestamp TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+      `;
+
+      // Create indexes for better performance
+      const createIndexesQuery = `
+        CREATE INDEX IF NOT EXISTS idx_meals_user_id ON meals(user_id);
+        CREATE INDEX IF NOT EXISTS idx_meals_date ON meals(date);
+        CREATE INDEX IF NOT EXISTS idx_meals_user_date ON meals(user_id, date);
+        CREATE INDEX IF NOT EXISTS idx_users_firebase_uid ON users(firebase_uid);
+      `;
+
+      this.db.serialize(() => {
+        this.db.run(createUsersTableQuery, (err) => {
+          if (err) {
+            console.error('Error creating users table:', err);
+            reject(err);
+            return;
+          }
+        });
+
+        this.db.run(createMealsTableQuery, (err) => {
+          if (err) {
+            console.error('Error creating meals table:', err);
+            reject(err);
+            return;
+          }
+        });
+
+        this.db.exec(createIndexesQuery, (err) => {
+          if (err) {
+            console.error('Error creating indexes:', err);
+            reject(err);
+          } else {
+            console.log('Database tables and indexes initialized successfully');
+            this.initialized = true;
+            resolve();
+          }
+        });
+      });
+    });
+  }
+
+  // Create or get user by Firebase UID
+  async createOrGetUser(firebaseUid, email = null, displayName = null) {
+    return new Promise((resolve, reject) => {
+      // First try to get existing user
+      const selectQuery = `SELECT * FROM users WHERE firebase_uid = ?`;
+      
+      this.db.get(selectQuery, [firebaseUid], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        if (row) {
+          // User exists, update if new info provided
+          if (email || displayName) {
+            const updateQuery = `
+              UPDATE users 
+              SET email = COALESCE(?, email), 
+                  display_name = COALESCE(?, display_name),
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE firebase_uid = ?
+            `;
+            
+            this.db.run(updateQuery, [email, displayName, firebaseUid], function(updateErr) {
+              if (updateErr) {
+                reject(updateErr);
+              } else {
+                // Return updated user
+                resolve({ ...row, email: email || row.email, display_name: displayName || row.display_name });
+              }
+            });
+          } else {
+            resolve(row);
+          }
+        } else {
+          // Create new user
+          const insertQuery = `
+            INSERT INTO users (firebase_uid, email, display_name)
+            VALUES (?, ?, ?)
+          `;
+          
+          this.db.run(insertQuery, [firebaseUid, email, displayName], function(insertErr) {
+            if (insertErr) {
+              reject(insertErr);
+            } else {
+              resolve({
+                id: this.lastID,
+                firebase_uid: firebaseUid,
+                email,
+                display_name: displayName
+              });
+            }
+          });
+        }
+      });
+    });
+  }
+
+  // Get user by Firebase UID
+  async getUserByFirebaseUid(firebaseUid) {
+    return new Promise((resolve, reject) => {
+      const query = `SELECT * FROM users WHERE firebase_uid = ?`;
+      
+      this.db.get(query, [firebaseUid], (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  // Get meals for a specific date and user
+  getMealsByDate(userId, date) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT * FROM meals 
+        WHERE user_id = ? AND date = ? 
+        ORDER BY created_at DESC
+      `;
+      
+      this.db.all(query, [userId, date], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows);
+        }
+      });
+    });
+  }
+
+  // Add a new meal for a user
+  addMeal(userId, mealData) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        INSERT INTO meals (user_id, date, name, grams, calories, protein_g, fat_total_g, carbohydrates_total_g, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      
+      const values = [
+        userId,
+        mealData.date,
+        mealData.name,
+        mealData.grams,
+        mealData.calories,
+        mealData.protein_g,
+        mealData.fat_total_g,
+        mealData.carbohydrates_total_g,
+        mealData.timestamp
+      ];
+      
+      this.db.run(query, values, function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ id: this.lastID, user_id: userId, ...mealData });
+        }
+      });
+    });
+  }
+
+  // Delete a meal for a user
+  deleteMeal(userId, date, id) {
+    return new Promise((resolve, reject) => {
+      // First get the meal data before deleting
+      const selectQuery = `SELECT * FROM meals WHERE user_id = ? AND date = ? AND id = ?`;
+      
+      this.db.get(selectQuery, [userId, date, id], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        if (!row) {
+          reject(new Error('Meal not found'));
+          return;
+        }
+        
+        // Now delete the meal
+        const deleteQuery = `DELETE FROM meals WHERE user_id = ? AND date = ? AND id = ?`;
+        
+        this.db.run(deleteQuery, [userId, date, id], function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(row);
+          }
+        });
+      });
+    });
+  }
+
+  // Get all dates with meal counts for a user
+  getAllDates(userId) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT date, COUNT(*) as itemCount 
+        FROM meals 
+        WHERE user_id = ?
+        GROUP BY date 
+        ORDER BY date DESC
+      `;
+      
+      this.db.all(query, [userId], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows);
+        }
+      });
+    });
+  }
+
+  // Get database statistics for a user
+  getStats(userId) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT 
+          COUNT(*) as totalMeals,
+          COUNT(DISTINCT date) as totalDays,
+          SUM(calories) as totalCalories,
+          AVG(calories) as avgCaloriesPerMeal,
+          SUM(protein_g) as totalProtein,
+          SUM(fat_total_g) as totalFat,
+          SUM(carbohydrates_total_g) as totalCarbs
+        FROM meals
+        WHERE user_id = ?
+      `;
+      
+      this.db.get(query, [userId], (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row);
+        }
+      });
+    });
+  }
+
+  // Get meals within a date range for a user
+  getMealsByDateRange(userId, startDate, endDate) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT * FROM meals 
+        WHERE user_id = ? AND date BETWEEN ? AND ? 
+        ORDER BY date DESC, created_at DESC
+      `;
+      
+      this.db.all(query, [userId, startDate, endDate], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows);
+        }
+      });
+    });
+  }
+
+  // Get nutrition totals by date for a user
+  getNutritionTotalsByDate(userId, date) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT 
+          date,
+          SUM(calories) as totalCalories,
+          SUM(protein_g) as totalProtein,
+          SUM(fat_total_g) as totalFat,
+          SUM(carbohydrates_total_g) as totalCarbs,
+          COUNT(*) as mealCount
+        FROM meals 
+        WHERE user_id = ? AND date = ?
+        GROUP BY date
+      `;
+      
+      this.db.get(query, [userId, date], (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row || {
+            date,
+            totalCalories: 0,
+            totalProtein: 0,
+            totalFat: 0,
+            totalCarbs: 0,
+            mealCount: 0
+          });
+        }
+      });
+    });
+  }
+
+  // Search meals by food name for a user
+  searchMeals(userId, searchTerm) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT * FROM meals 
+        WHERE user_id = ? AND name LIKE ? 
+        ORDER BY created_at DESC
+        LIMIT 50
+      `;
+      
+      this.db.all(query, [userId, `%${searchTerm}%`], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows);
+        }
+      });
+    });
+  }
+
+  // Update a meal for a user
+  updateMeal(userId, id, mealData) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        UPDATE meals 
+        SET name = ?, grams = ?, calories = ?, protein_g = ?, fat_total_g = ?, carbohydrates_total_g = ?
+        WHERE user_id = ? AND id = ?
+      `;
+      
+      const values = [
+        mealData.name,
+        mealData.grams,
+        mealData.calories,
+        mealData.protein_g,
+        mealData.fat_total_g,
+        mealData.carbohydrates_total_g,
+        userId,
+        id
+      ];
+      
+      this.db.run(query, values, function(err) {
+        if (err) {
+          reject(err);
+        } else if (this.changes === 0) {
+          reject(new Error('Meal not found'));
+        } else {
+          resolve({ id, user_id: userId, ...mealData });
+        }
+      });
+    });
+  }
+
+  // Backup database for a specific user
+  async backup(userId) {
+    try {
+      const meals = await new Promise((resolve, reject) => {
+        this.db.all('SELECT * FROM meals WHERE user_id = ? ORDER BY date, created_at', [userId], (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        });
+      });
+
+      const user = await new Promise((resolve, reject) => {
+        this.db.get('SELECT * FROM users WHERE id = ?', [userId], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+
+      return {
+        exportDate: new Date().toISOString(),
+        user: user,
+        totalMeals: meals.length,
+        meals
+      };
+    } catch (error) {
+      throw new Error(`Backup failed: ${error.message}`);
+    }
+  }
+
+  // Restore from backup for a specific user
+  async restore(userId, backupData) {
+    return new Promise((resolve, reject) => {
+      this.db.serialize(() => {
+        this.db.run('BEGIN TRANSACTION');
+        
+        // Clear existing data for this user
+        this.db.run('DELETE FROM meals WHERE user_id = ?', [userId], (err) => {
+          if (err) {
+            this.db.run('ROLLBACK');
+            reject(err);
+            return;
+          }
+        });
+
+        // Insert backup data
+        const insertStmt = this.db.prepare(`
+          INSERT INTO meals (user_id, date, name, grams, calories, protein_g, fat_total_g, carbohydrates_total_g, timestamp, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        let errors = [];
+        backupData.meals.forEach(meal => {
+          insertStmt.run([
+            userId, // Use the current user's ID instead of the backed up user_id
+            meal.date,
+            meal.name,
+            meal.grams,
+            meal.calories,
+            meal.protein_g,
+            meal.fat_total_g,
+            meal.carbohydrates_total_g,
+            meal.timestamp,
+            meal.created_at
+          ], (err) => {
+            if (err) errors.push(err);
+          });
+        });
+
+        insertStmt.finalize((err) => {
+          if (err || errors.length > 0) {
+            this.db.run('ROLLBACK');
+            reject(err || errors[0]);
+          } else {
+            this.db.run('COMMIT', (err) => {
+              if (err) {
+                reject(err);
+              } else {
+                resolve({ restored: backupData.meals.length });
+              }
+            });
+          }
+        });
+      });
+    });
+  }
+
+  // Close database connection
+  close() {
+    return new Promise((resolve, reject) => {
+      this.db.close((err) => {
+        if (err) {
+          console.error('Error closing database connection:', err);
+          reject(err);
+        } else {
+          console.log('Database connection closed successfully');
+          resolve();
+        }
+      });
+    });
+  }
+}
+
+module.exports = Database;

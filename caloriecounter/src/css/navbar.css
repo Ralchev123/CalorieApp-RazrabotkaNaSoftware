@@ -45,3 +45,44 @@
       padding: 0.5rem;
     }
   }
+
+  .user-menu {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  .user-email {
+    font-size: 14px;
+    color: #666;
+  }
+  
+  .btn-logout {
+    background: #ff4757;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  .btn-logout:hover {
+    background: #ff3838;
+  }
+  
+  .user-email-mobile {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+  }
+  
+  .btn-logout-mobile {
+    background: #ff4757;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+  }
