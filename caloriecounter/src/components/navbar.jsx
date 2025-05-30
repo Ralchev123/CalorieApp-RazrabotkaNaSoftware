@@ -1,4 +1,3 @@
-// NavBar.js
 import { useState } from 'react';
 import { ChevronDown, Utensils } from 'lucide-react';
 import { Link, useNavigate } from "react-router-dom";
@@ -57,7 +56,6 @@ function NavBar() {
           </div>
         </div>
       </div>
-      {/* Mobile menu */}
       {isNavOpen && (
         <div className="mobile-menu">
           <div className="mobile-menu-links">

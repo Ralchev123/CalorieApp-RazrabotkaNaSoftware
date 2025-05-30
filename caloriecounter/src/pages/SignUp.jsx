@@ -1,4 +1,3 @@
-// SignUp.js
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -29,7 +28,7 @@ export default function SignUp() {
       setError("");
       setLoading(true);
       await signup(email, password);
-      navigate("/count-your-cal"); // Redirect to protected page after signup
+      navigate("/count-your-cal");
     } catch (error) {
       setError("Failed to create an account. " + error.message);
       console.error("Signup error:", error);

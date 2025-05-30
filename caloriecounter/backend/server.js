@@ -7,24 +7,36 @@ require('dotenv').config();
 console.log('API key:', process.env.REACT_APP_API_KEY);
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 
-// Initialize Firebase Admin SDK
-const serviceAccount = require('./firebase-service-account.json'); // You'll need to add this file
+let firebaseInitialized = false;
+try {
+  const serviceAccount = require('./firebase-service-account.json');
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+  firebaseInitialized = true;
+  console.log('Firebase Admin SDK initialized successfully');
+} catch (error) {
+  console.log('Firebase service account not found or invalid. Some features may be disabled.');
+  console.log('Error:', error.message);
+}
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
-// Initialize database
 const db = new Database();
 
-// Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['http://localhost:3000', 'http://localhost:8080'] 
+    : '*',
+  credentials: true
+}));
 app.use(express.json());
 
-// Firebase Authentication Middleware
 async function authenticateFirebaseToken(req, res, next) {
+  if (!firebaseInitialized) {
+    return res.status(500).json({ error: 'Firebase authentication not configured' });
+  }
+
   try {
     const authHeader = req.headers.authorization;
     
@@ -35,7 +47,6 @@ async function authenticateFirebaseToken(req, res, next) {
     const idToken = authHeader.split('Bearer ')[1];
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     
-    // Get or create user in our database
     const user = await db.createOrGetUser(
       decodedToken.uid,
       decodedToken.email,
@@ -56,7 +67,6 @@ async function authenticateFirebaseToken(req, res, next) {
   }
 }
 
-// Initialize database on startup
 async function initializeApp() {
   try {
     await db.initialize();
@@ -67,7 +77,6 @@ async function initializeApp() {
   }
 }
 
-// Nutrition API helper function
 async function getNutritionData(foodItem, weight) {
   try {
     const REACT_APP_API_KEY = process.env.REACT_APP_API_KEY;
@@ -103,7 +112,6 @@ async function getNutritionData(foodItem, weight) {
     throw new Error('No nutrition data found');
   } catch (error) {
     console.error('Error fetching nutrition data:', error);
-    // Fallback values
     return {
       calories: weight * 1.5,
       protein_g: weight * 0.05,
@@ -113,18 +121,29 @@ async function getNutritionData(foodItem, weight) {
   }
 }
 
-// Public Routes (no authentication required)
 
-// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    database: 'connected'
+    database: 'connected',
+    firebase: firebaseInitialized ? 'initialized' : 'not configured',
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// Nutrition lookup endpoint (can be public for testing)
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Nutrition Tracker API',
+    status: 'Running',
+    endpoints: {
+      health: '/api/health',
+      nutrition: '/api/nutrition?food=apple&weight=100'
+    }
+  });
+});
+
 app.get('/api/nutrition', async (req, res) => {
   try {
     const { food, weight } = req.query;
@@ -140,9 +159,7 @@ app.get('/api/nutrition', async (req, res) => {
   }
 });
 
-// Protected Routes (require authentication)
 
-// Get current user info
 app.get('/api/user', authenticateFirebaseToken, async (req, res) => {
   try {
     const user = await db.getUserByFirebaseUid(req.user.firebaseUid);
@@ -159,13 +176,11 @@ app.get('/api/user', authenticateFirebaseToken, async (req, res) => {
   }
 });
 
-// Get meals for a specific date
 app.get('/api/meals/:date', authenticateFirebaseToken, async (req, res) => {
   try {
     const { date } = req.params;
     const meals = await db.getMealsByDate(req.user.dbUserId, date);
     
-    // Calculate totals
     const totals = meals.reduce((acc, meal) => {
       acc.calories += meal.calories || 0;
       acc.protein_g += meal.protein_g || 0;
@@ -190,7 +205,6 @@ app.get('/api/meals/:date', authenticateFirebaseToken, async (req, res) => {
   }
 });
 
-// Add a new meal
 app.post('/api/meals', authenticateFirebaseToken, async (req, res) => {
   try {
     const { date, foodItem, grams } = req.body;
@@ -201,7 +215,6 @@ app.post('/api/meals', authenticateFirebaseToken, async (req, res) => {
       });
     }
     
-    // Get nutrition data
     const nutritionData = await getNutritionData(foodItem, parseInt(grams));
     
     const mealData = {
@@ -212,7 +225,6 @@ app.post('/api/meals', authenticateFirebaseToken, async (req, res) => {
       timestamp: new Date().toISOString()
     };
     
-    // Add to database
     const newMeal = await db.addMeal(req.user.dbUserId, mealData);
     
     res.status(201).json({
@@ -226,7 +238,6 @@ app.post('/api/meals', authenticateFirebaseToken, async (req, res) => {
   }
 });
 
-// Update a meal
 app.put('/api/meals/:id', authenticateFirebaseToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -238,7 +249,6 @@ app.put('/api/meals/:id', authenticateFirebaseToken, async (req, res) => {
       });
     }
     
-    // Get nutrition data
     const nutritionData = await getNutritionData(foodItem, parseInt(grams));
     
     const mealData = {
@@ -247,7 +257,6 @@ app.put('/api/meals/:id', authenticateFirebaseToken, async (req, res) => {
       ...nutritionData
     };
     
-    // Update in database
     const updatedMeal = await db.updateMeal(req.user.dbUserId, parseInt(id), mealData);
     
     res.json({
@@ -265,7 +274,6 @@ app.put('/api/meals/:id', authenticateFirebaseToken, async (req, res) => {
   }
 });
 
-// Delete a meal
 app.delete('/api/meals/:date/:id', authenticateFirebaseToken, async (req, res) => {
   try {
     const { date, id } = req.params;
@@ -287,7 +295,6 @@ app.delete('/api/meals/:date/:id', authenticateFirebaseToken, async (req, res) =
   }
 });
 
-// Get all dates with data
 app.get('/api/dates', authenticateFirebaseToken, async (req, res) => {
   try {
     const dates = await db.getAllDates(req.user.dbUserId);
@@ -298,7 +305,6 @@ app.get('/api/dates', authenticateFirebaseToken, async (req, res) => {
   }
 });
 
-// Get meals within a date range
 app.get('/api/meals', authenticateFirebaseToken, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -317,7 +323,6 @@ app.get('/api/meals', authenticateFirebaseToken, async (req, res) => {
   }
 });
 
-// Search meals
 app.get('/api/search', authenticateFirebaseToken, async (req, res) => {
   try {
     const { q } = req.query;
@@ -334,7 +339,6 @@ app.get('/api/search', authenticateFirebaseToken, async (req, res) => {
   }
 });
 
-// Get nutrition totals for a date
 app.get('/api/nutrition/:date', authenticateFirebaseToken, async (req, res) => {
   try {
     const { date } = req.params;
@@ -346,7 +350,6 @@ app.get('/api/nutrition/:date', authenticateFirebaseToken, async (req, res) => {
   }
 });
 
-// Database statistics endpoint
 app.get('/api/stats', authenticateFirebaseToken, async (req, res) => {
   try {
     const stats = await db.getStats(req.user.dbUserId);
@@ -357,7 +360,6 @@ app.get('/api/stats', authenticateFirebaseToken, async (req, res) => {
   }
 });
 
-// Backup endpoint
 app.get('/api/backup', authenticateFirebaseToken, async (req, res) => {
   try {
     const backupData = await db.backup(req.user.dbUserId);
@@ -371,7 +373,6 @@ app.get('/api/backup', authenticateFirebaseToken, async (req, res) => {
   }
 });
 
-// Restore endpoint
 app.post('/api/restore', authenticateFirebaseToken, async (req, res) => {
   try {
     const backupData = req.body;
@@ -391,18 +392,15 @@ app.post('/api/restore', authenticateFirebaseToken, async (req, res) => {
   }
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\nReceived SIGINT. Graceful shutdown...');
   try {
@@ -414,13 +412,16 @@ process.on('SIGINT', async () => {
   }
 });
 
-// Start server
 initializeApp().then(() => {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Nutrition API server running on port ${PORT}`);
     console.log(`Health check: http://localhost:${PORT}/api/health`);
-    console.log(`Note: Most endpoints now require Firebase authentication`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Firebase: ${firebaseInitialized ? 'Configured' : 'Not configured'}`);
   });
+}).catch(error => {
+  console.error('Failed to start application:', error);
+  process.exit(1);
 });
 
 module.exports = app;

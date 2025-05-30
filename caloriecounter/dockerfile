@@ -1,0 +1,35 @@
+
+FROM node:18 AS frontend-build
+WORKDIR /app/frontend
+COPY package*.json ./
+RUN npm ci
+COPY public/ public/
+COPY src/ src/
+RUN npm run build
+
+FROM node:18 AS backend-build
+WORKDIR /app/backend
+COPY backend/package*.json ./
+RUN npm ci --only=production
+
+FROM node:18 AS production
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y sqlite3 wget && rm -rf /var/lib/apt/lists/*
+
+COPY --from=backend-build /app/backend/node_modules ./backend/node_modules
+COPY backend/ ./backend/
+
+COPY --from=frontend-build /app/frontend/build ./frontend/build
+
+COPY start.sh ./
+RUN chmod +x start.sh
+
+RUN mkdir -p /app/backend/logs
+
+EXPOSE 3000 5000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:5000/api/health || exit 1
+
+CMD ["./start.sh"]

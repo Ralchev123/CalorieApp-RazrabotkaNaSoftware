@@ -12,7 +12,7 @@
 /build
 
 # misc
-
+/backend/.env
 /backend/firebase-service-account.json
 .DS_Store
 .env.local

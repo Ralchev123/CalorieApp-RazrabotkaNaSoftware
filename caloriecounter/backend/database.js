@@ -8,12 +8,10 @@ class Database {
     this.initialized = false;
   }
 
-  // Initialize database tables
   async initialize() {
     if (this.initialized) return;
 
     return new Promise((resolve, reject) => {
-      // Create users table
       const createUsersTableQuery = `
         CREATE TABLE IF NOT EXISTS users (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,7 +23,6 @@ class Database {
         );
       `;
 
-      // Update meals table to include user_id
       const createMealsTableQuery = `
         CREATE TABLE IF NOT EXISTS meals (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,7 +40,6 @@ class Database {
         );
       `;
 
-      // Create indexes for better performance
       const createIndexesQuery = `
         CREATE INDEX IF NOT EXISTS idx_meals_user_id ON meals(user_id);
         CREATE INDEX IF NOT EXISTS idx_meals_date ON meals(date);
@@ -82,10 +78,8 @@ class Database {
     });
   }
 
-  // Create or get user by Firebase UID
   async createOrGetUser(firebaseUid, email = null, displayName = null) {
     return new Promise((resolve, reject) => {
-      // First try to get existing user
       const selectQuery = `SELECT * FROM users WHERE firebase_uid = ?`;
       
       this.db.get(selectQuery, [firebaseUid], (err, row) => {
@@ -95,7 +89,6 @@ class Database {
         }
 
         if (row) {
-          // User exists, update if new info provided
           if (email || displayName) {
             const updateQuery = `
               UPDATE users 
@@ -109,7 +102,6 @@ class Database {
               if (updateErr) {
                 reject(updateErr);
               } else {
-                // Return updated user
                 resolve({ ...row, email: email || row.email, display_name: displayName || row.display_name });
               }
             });
@@ -117,7 +109,6 @@ class Database {
             resolve(row);
           }
         } else {
-          // Create new user
           const insertQuery = `
             INSERT INTO users (firebase_uid, email, display_name)
             VALUES (?, ?, ?)
@@ -140,7 +131,6 @@ class Database {
     });
   }
 
-  // Get user by Firebase UID
   async getUserByFirebaseUid(firebaseUid) {
     return new Promise((resolve, reject) => {
       const query = `SELECT * FROM users WHERE firebase_uid = ?`;
@@ -155,7 +145,6 @@ class Database {
     });
   }
 
-  // Get meals for a specific date and user
   getMealsByDate(userId, date) {
     return new Promise((resolve, reject) => {
       const query = `
@@ -174,7 +163,6 @@ class Database {
     });
   }
 
-  // Add a new meal for a user
   addMeal(userId, mealData) {
     return new Promise((resolve, reject) => {
       const query = `
@@ -204,10 +192,8 @@ class Database {
     });
   }
 
-  // Delete a meal for a user
   deleteMeal(userId, date, id) {
     return new Promise((resolve, reject) => {
-      // First get the meal data before deleting
       const selectQuery = `SELECT * FROM meals WHERE user_id = ? AND date = ? AND id = ?`;
       
       this.db.get(selectQuery, [userId, date, id], (err, row) => {
@@ -221,7 +207,6 @@ class Database {
           return;
         }
         
-        // Now delete the meal
         const deleteQuery = `DELETE FROM meals WHERE user_id = ? AND date = ? AND id = ?`;
         
         this.db.run(deleteQuery, [userId, date, id], function(err) {
@@ -235,7 +220,6 @@ class Database {
     });
   }
 
-  // Get all dates with meal counts for a user
   getAllDates(userId) {
     return new Promise((resolve, reject) => {
       const query = `
@@ -256,7 +240,6 @@ class Database {
     });
   }
 
-  // Get database statistics for a user
   getStats(userId) {
     return new Promise((resolve, reject) => {
       const query = `
@@ -282,7 +265,6 @@ class Database {
     });
   }
 
-  // Get meals within a date range for a user
   getMealsByDateRange(userId, startDate, endDate) {
     return new Promise((resolve, reject) => {
       const query = `
@@ -301,7 +283,6 @@ class Database {
     });
   }
 
-  // Get nutrition totals by date for a user
   getNutritionTotalsByDate(userId, date) {
     return new Promise((resolve, reject) => {
       const query = `
@@ -334,7 +315,6 @@ class Database {
     });
   }
 
-  // Search meals by food name for a user
   searchMeals(userId, searchTerm) {
     return new Promise((resolve, reject) => {
       const query = `
@@ -354,7 +334,6 @@ class Database {
     });
   }
 
-  // Update a meal for a user
   updateMeal(userId, id, mealData) {
     return new Promise((resolve, reject) => {
       const query = `
@@ -386,7 +365,6 @@ class Database {
     });
   }
 
-  // Backup database for a specific user
   async backup(userId) {
     try {
       const meals = await new Promise((resolve, reject) => {
@@ -414,13 +392,11 @@ class Database {
     }
   }
 
-  // Restore from backup for a specific user
   async restore(userId, backupData) {
     return new Promise((resolve, reject) => {
       this.db.serialize(() => {
         this.db.run('BEGIN TRANSACTION');
         
-        // Clear existing data for this user
         this.db.run('DELETE FROM meals WHERE user_id = ?', [userId], (err) => {
           if (err) {
             this.db.run('ROLLBACK');
@@ -429,7 +405,6 @@ class Database {
           }
         });
 
-        // Insert backup data
         const insertStmt = this.db.prepare(`
           INSERT INTO meals (user_id, date, name, grams, calories, protein_g, fat_total_g, carbohydrates_total_g, timestamp, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -438,7 +413,7 @@ class Database {
         let errors = [];
         backupData.meals.forEach(meal => {
           insertStmt.run([
-            userId, // Use the current user's ID instead of the backed up user_id
+            userId, 
             meal.date,
             meal.name,
             meal.grams,
@@ -471,7 +446,6 @@ class Database {
     });
   }
 
-  // Close database connection
   close() {
     return new Promise((resolve, reject) => {
       this.db.close((err) => {

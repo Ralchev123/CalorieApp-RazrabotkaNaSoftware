@@ -58,13 +58,16 @@
   }
   
   .btn-logout {
-    background: #ff4757;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--blue);
+    color: var(--white);
+    padding: 1.25rem 2.5rem;
+    font-weight: 1000;
+    border-radius: var(--radius);
+    gap: 0.5rem;
+    transition: var(--transition);
+    font-size: 1.25rem;
   }
   
   .btn-logout:hover {

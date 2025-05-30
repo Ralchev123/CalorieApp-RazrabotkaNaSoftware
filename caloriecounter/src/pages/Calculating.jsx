@@ -2,14 +2,11 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import "../css/Calculating.css"
 
-// API base URL - adjust based on your backend deployment
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 export default function FoodTracker() {
-  // Authentication
   const { currentUser, loading: authLoading } = useAuth();
 
-  // State declarations (all hooks at top level)
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [foodItem, setFoodItem] = useState("");
@@ -25,7 +22,6 @@ export default function FoodTracker() {
   const [historicalDates, setHistoricalDates] = useState([]);
   const [viewingDate, setViewingDate] = useState(getTodayDate());
 
-  // Load meals for the selected date on component mount and date change
   useEffect(() => {
     if (currentUser) {
       loadMealsForDate(selectedDate);
@@ -128,15 +124,12 @@ export default function FoodTracker() {
       
       const result = await response.json();
       
-      // Reload meals for the current date
       await loadMealsForDate(selectedDate);
       await loadHistoricalDates();
       
-      // Reset form
       setFoodItem("");
       setGrams("");
       
-      // Show success toast
       showToast(result.message, "success");
       
     } catch (error) {
@@ -164,11 +157,9 @@ export default function FoodTracker() {
       
       const result = await response.json();
       
-      // Reload meals and historical dates
       await loadMealsForDate(selectedDate);
       await loadHistoricalDates();
       
-      // Show success toast
       showToast(result.message, "success");
       
     } catch (error) {
@@ -183,16 +174,13 @@ export default function FoodTracker() {
     showToast(`Viewing food log for ${new Date(viewingDate).toLocaleDateString()}`, "info");
   }
   
-  // Function to show toast notifications
   function showToast(message, type = "success") {
     setToast({ show: true, message, type });
-    // Auto-hide the toast after 3 seconds
     setTimeout(() => {
       setToast({ show: false, message: "", type: "" });
     }, 3000);
   }
 
-  // Authentication checks (after all hooks)
   if (authLoading) {
     return (
       <div className="auth-loading">
@@ -236,7 +224,6 @@ export default function FoodTracker() {
     );
   }
 
-  // Main component render
   return (
     <div className="min-h-screen bg-gray-50 food-tracker-container">
       <header className="bg-green-600 text-white p-4 shadow-md app-header">
@@ -249,7 +236,6 @@ export default function FoodTracker() {
       </header>
       
       <main className="max-w-4xl mx-auto p-4">
-        {/* Food Entry Section */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6 card card-hover">
           <h2 className="text-xl font-semibold text-green-800 border-b border-green-200 pb-2 mb-4 gradient-text">
             Add Food Item
@@ -307,7 +293,6 @@ export default function FoodTracker() {
           </div>
         </div>
         
-        {/* Daily Summary */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6 card totals-card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-green-800 gradient-text">
@@ -432,7 +417,6 @@ export default function FoodTracker() {
           )}
         </div>
         
-        {/* Historical Data */}
         <div className="bg-white rounded-lg shadow-md p-6 card">
           <h2 className="text-xl font-semibold text-green-800 border-b border-green-200 pb-2 mb-4 gradient-text">
             Past Entries
@@ -467,7 +451,6 @@ export default function FoodTracker() {
         </div>
       </main>
       
-      {/* Toast notification */}
       {toast.show && (
         <div className={`toast toast-${toast.type}`}>
           {toast.message}

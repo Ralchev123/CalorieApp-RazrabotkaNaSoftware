@@ -10,7 +10,6 @@ export default function HomePage() {
   return (
     <div className="home-page">
 
-      {/* Hero Section */}
       <section className="hero-section">
         <div className="hero-container">
           <div className="hero-content">
@@ -117,7 +116,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features Section */}
       <section id="features" className="features-section">
         <div className="features-container">
           <div className="section-header">
@@ -155,7 +153,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* How It Works */}
       <section id="how-it-works" className="process-section">
         <div className="process-container">
           <div className="section-header">
@@ -195,7 +192,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="cta-section">
         <div className="cta-container">
           <h2 className="cta-title">Ready to Transform Your Health?</h2>
@@ -213,7 +209,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="footer">
         <div className="footer-container">
           <div className="footer-columns">

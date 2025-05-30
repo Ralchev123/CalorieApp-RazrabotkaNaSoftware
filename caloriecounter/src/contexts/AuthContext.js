@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '../firebase';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
 } from 'firebase/auth';
 
 const AuthContext = createContext();
@@ -21,6 +21,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [authToken, setAuthToken] = useState(null); 
 
   const safeAuthOperation = async (operation, ...args) => {
     try {
@@ -32,13 +33,54 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signup = (email, password) => 
-    safeAuthOperation(createUserWithEmailAndPassword, email, password);
+  const saveAuthToken = async (user) => {
+    try {
+      if (user) {
+        const token = await user.getIdToken();
+        localStorage.setItem('authToken', token);
+        setAuthToken(token);
+        console.log('Auth token saved:', token.substring(0, 20) + '...');
+      } else {
+        localStorage.removeItem('authToken');
+        setAuthToken(null);
+        console.log('Auth token removed');
+      }
+    } catch (error) {
+      console.error('Error handling auth token:', error);
+    }
+  };
 
-  const login = (email, password) => 
-    safeAuthOperation(signInWithEmailAndPassword, email, password);
+  const signup = async (email, password) => {
+    const result = await safeAuthOperation(createUserWithEmailAndPassword, email, password);
+    await saveAuthToken(result.user);
+    return result;
+  };
 
-  const logout = () => safeAuthOperation(signOut);
+  const login = async (email, password) => {
+    const result = await safeAuthOperation(signInWithEmailAndPassword, email, password);
+    await saveAuthToken(result.user);
+    return result;
+  };
+
+  const logout = async () => {
+    await saveAuthToken(null);
+    return await safeAuthOperation(signOut);
+  };
+
+  const getAuthToken = async () => {
+    try {
+      if (currentUser) {
+        const token = await currentUser.getIdToken(true);
+        localStorage.setItem('authToken', token);
+        setAuthToken(token);
+        return token;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     if (!auth) {
@@ -47,14 +89,19 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setLoading(false);
-      setError(null);
-    }, (err) => {
-      setError(err.message);
-      setLoading(false);
-    });
+    const unsubscribe = onAuthStateChanged(
+      auth, 
+      async (user) => {
+        setCurrentUser(user);
+        await saveAuthToken(user);
+        setLoading(false);
+        setError(null);
+      }, 
+      (err) => {
+        setError(err.message);
+        setLoading(false);
+      }
+    );
 
     return () => {
       unsubscribe();
@@ -64,9 +111,11 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     currentUser,
+    authToken,
     signup,
     login,
     logout,
+    getAuthToken,
     loading,
     error
   };

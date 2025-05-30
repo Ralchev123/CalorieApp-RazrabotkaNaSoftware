@@ -1,4 +1,3 @@
-// Login.js
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -20,7 +19,7 @@ export default function Login() {
       setError("");
       setLoading(true);
       await login(email, password);
-      navigate("/count-your-cal"); // Redirect to protected page after login
+      navigate("/count-your-cal"); 
     } catch (error) {
       setError("Failed to log in. Please check your credentials.");
       console.error("Login error:", error);
